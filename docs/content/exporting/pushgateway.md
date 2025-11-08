@@ -14,10 +14,6 @@ g = Gauge('job_last_success_unixtime', 'Last time a batch job successfully finis
 g.set_to_current_time()
 push_to_gateway('localhost:9091', job='batchA', registry=registry)
 ```
-To use compression (either gzip or snappy), add these params:
-```
-push_to_gateway('localhost:9091', job='batchA', registry=registry, use_compression=True, compression_type="gzip")
-```
 
 A separate registry is used, as the default registry may contain other metrics
 such as those from the Process Collector.
@@ -67,9 +63,4 @@ registry = CollectorRegistry()
 g = Gauge('job_last_success_unixtime', 'Last time a batch job successfully finished', registry=registry)
 g.set_to_current_time()
 push_to_gateway('localhost:9091', job='batchA', registry=registry, handler=my_auth_handler)
-```
-
-To use compression with with authentication(either gzip or snappy), add these params:
-```
-push_to_gateway('localhost:9091', job='batchA', registry=registry,handler=my_auth_handler, use_compression=True, compression_type="gzip")
 ```

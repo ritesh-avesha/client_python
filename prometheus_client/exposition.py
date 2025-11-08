@@ -485,8 +485,6 @@ def push_to_gateway(
         grouping_key: Optional[Dict[str, Any]] = None,
         timeout: Optional[float] = 30,
         handler: Callable = default_handler,
-        use_compression: Optional[bool] = False,
-        compression_type: Optional[str] = None,
 ) -> None:
     """Push metrics to the given pushgateway.
 
@@ -523,15 +521,10 @@ def push_to_gateway(
               failure.
               'content' is the data which should be used to form the HTTP
               Message Body.
-    `use_compression` is a boolean indicating whether to compress the data
-    `compression_type` is a string indicating the compression type to use
-                          if use_compression is True.  Currently only 'gzip'
-                          and `snappy` are supported.  If None, then compression
-                         will not be used.  
 
     This overwrites all metrics with the same job and grouping_key.
     This uses the PUT HTTP method."""
-    _use_gateway('PUT', gateway, job, registry, grouping_key, timeout, handler, use_compression, compression_type)
+    _use_gateway('PUT', gateway, job, registry, grouping_key, timeout, handler)
 
 
 def pushadd_to_gateway(
@@ -541,8 +534,6 @@ def pushadd_to_gateway(
         grouping_key: Optional[Dict[str, Any]] = None,
         timeout: Optional[float] = 30,
         handler: Callable = default_handler,
-        use_compression: Optional[bool] = False,
-        compression_type: Optional[str] = None,
 ) -> None:
     """PushAdd metrics to the given pushgateway.
 
@@ -561,15 +552,10 @@ def pushadd_to_gateway(
               will be carried out by a default handler.
               See the 'prometheus_client.push_to_gateway' documentation
               for implementation requirements.
-    `use_compression` is a boolean indicating whether to compress the data
-    `compression_type` is a string indicating the compression type to use
-                          if use_compression is True.  Currently only 'gzip'
-                          and `snappy` are supported.  If None, then compression
-                         will not be used. 
 
     This replaces metrics with the same name, job and grouping_key.
     This uses the POST HTTP method."""
-    _use_gateway('POST', gateway, job, registry, grouping_key, timeout, handler, use_compression, compression_type)
+    _use_gateway('POST', gateway, job, registry, grouping_key, timeout, handler)
 
 
 def delete_from_gateway(
@@ -609,8 +595,6 @@ def _use_gateway(
         grouping_key: Optional[Dict[str, Any]],
         timeout: Optional[float],
         handler: Callable,
-        use_compression: Optional[bool] = False,
-        compression_type: Optional[str] = None,
 ) -> None:
     gateway_url = urlparse(gateway)
     # See https://bugs.python.org/issue27657 for details on urlparse in py>=3.7.6.
@@ -631,31 +615,11 @@ def _use_gateway(
     url += ''.join(
         '/{}/{}'.format(*_escape_grouping_key(str(k), str(v)))
         for k, v in sorted(grouping_key.items()))
-    
-    if use_compression:
 
-        if compression_type == 'gzip':
-            headers = [('Content-Type', CONTENT_TYPE_LATEST), ('Content-Encoding', 'gzip')]
-            data = gzip.compress(data)
-            handler(url=url, method=method, timeout=timeout, headers=headers, data=data)()
-
-        elif compression_type == 'snappy':
-            try:
-                import snappy
-                headers = [('Content-Type', CONTENT_TYPE_LATEST), ('Content-Encoding', 'snappy')]
-                # Currently pushgateways works with snappy framing format
-                data = snappy.snappy.StreamCompressor().compress(data)
-                handler(url=url, method=method, timeout=timeout, headers=headers, data=data)()
-            except ImportError:
-                raise ImportError('Snappy compression requires the snappy module')                
-
-        else:
-            raise ValueError(f'Unsupported compression type: {compression_type}')
-    else:
-        handler(
-            url=url, method=method, timeout=timeout,
-            headers=[('Content-Type', CONTENT_TYPE_LATEST)], data=data,
-        )()
+    handler(
+        url=url, method=method, timeout=timeout,
+        headers=[('Content-Type', CONTENT_TYPE_LATEST)], data=data,
+    )()
 
 
 def _escape_grouping_key(k, v):
